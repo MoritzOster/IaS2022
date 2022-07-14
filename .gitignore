@@ -1,0 +1,9 @@
+# Unity
+Library/
+Logs/
+Temp/
+UserSettings/
+
+# Visual Studio
+.vscode/
+*.sln
