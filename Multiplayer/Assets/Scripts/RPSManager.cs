@@ -2,7 +2,9 @@ using Unity.Netcode;
 using Unity.Netcode.Transports.UNET;
 using Unity.Networking.Transport;
 using UnityEngine;
+using UnityEngine.Networking;
 
+using System.Collections;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -34,6 +36,10 @@ namespace RPS
             DRAW
         }
 
+        private const string ROCK = "gesture=rock"; 
+        private const string PAPER = "gesture=paper"; 
+        private const string SCISSORS = "gesture=scissors"; 
+
         //private State state = State.CONNECT;
         private bool clientConnected = false;
 		private string hostAddress = GetLocalIPAddress();
@@ -44,8 +50,19 @@ namespace RPS
         public NetworkVariable<Move> HostMove = new NetworkVariable<Move>();
         public NetworkVariable<Move> ClientMove = new NetworkVariable<Move>();
 
+        private string text = "empty";
+        private int updateInterval = 1;
+        private double updateNextTime = 0.0;
+
         void Update()
         {
+            if (Time.time >= updateNextTime) {
+                if (NetworkManager.Singleton.IsHost)
+                {
+                    StartCoroutine(GetPlayerMove());
+                }
+                updateNextTime += updateInterval;
+            }
         }
 
         void OnGUI()
@@ -58,6 +75,7 @@ namespace RPS
             }
             else if (NetworkManager.Singleton.IsHost)
             {
+                //GUILayout.Label(text);
                 HostUI();
             }
             else
@@ -93,7 +111,7 @@ namespace RPS
                     GUILayout.Label("Client ready: " + ClientReady.Value);
                     break;
                 case State.WAITING:
-					if (HostReady.Value == State.WAITING || HostReady.Value == State.ROUND)
+					if (HostReady.Value == State.WAITING || HostReady.Value == State.ROUND || HostReady.Value == State.RESULT)
 					{
 						//state = State.ROUND;						
                         SubmitClientReadyServerRpc(State.ROUND);
@@ -106,21 +124,28 @@ namespace RPS
                     GUILayout.Label("Client ready: " + ClientReady.Value);
                     break;
                 case State.ROUND:
+                    //var playerObject = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+                    //var player = playerObject.GetComponent<RPSPlayer>();
+                    //player.Move();
+
 					if (GUILayout.Button("Rock"))
 					{
 				        SubmitClientMoveServerRpc(Move.ROCK);
+                        //player.TriggerServerRpc("rock");
 						//state = State.RESULT;
                         SubmitClientReadyServerRpc(State.RESULT);
 					}
 					if (GUILayout.Button("Paper"))
 					{
 				        SubmitClientMoveServerRpc(Move.PAPER);
+                        //player.TriggerServerRpc("paper");
 						//state = State.RESULT;
                         SubmitClientReadyServerRpc(State.RESULT);
 					}
 					if (GUILayout.Button("Scissors"))
 					{
 				        SubmitClientMoveServerRpc(Move.SCISSORS);
+                        //player.TriggerServerRpc("scissors");
 						//state = State.RESULT;
                         SubmitClientReadyServerRpc(State.RESULT);
 					}
@@ -128,8 +153,41 @@ namespace RPS
                 case State.RESULT:
                     if (HostReady.Value == State.RESULT)
 					{
+                        var playerObject = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+                        var player = playerObject.GetComponent<RPSPlayer>();
+
+                        switch (ClientMove.Value)
+                        {
+                            case Move.ROCK:
+                                player.TriggerServerRpc("rock");
+                                break;
+                            case Move.PAPER:
+                                player.TriggerServerRpc("paper");
+                                break;
+                            case Move.SCISSORS:
+                                player.TriggerServerRpc("scissors");
+                                break;
+                            default:
+                                break;
+                        }
+
                         Result result = GetResult();
-	                    GUILayout.Label("Winner: " + result);
+                        GUIStyle guiStyle = new GUIStyle();
+                        guiStyle.fontSize = 20;
+                        switch (result)
+                        {
+                            case Result.DRAW:
+        	                    GUILayout.Label("It is a draw!", guiStyle);
+                                break;
+                            case Result.CLIENT:
+        	                    GUILayout.Label("You win! Congratulations!", guiStyle);
+                                break;
+                            case Result.HOST:
+        	                    GUILayout.Label("Opponent wins!", guiStyle);
+                                break;
+                            default:
+                                break;
+                        }
 					}
 					else
 					{
@@ -178,30 +236,96 @@ namespace RPS
                     GUILayout.Label("Client ready: " + ClientReady.Value);
                     break;
                 case State.ROUND:
+                    
+                    //var playerObject = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+                    //var player = playerObject.GetComponent<RPSPlayer>();
+                    //player.Move();
+                    string cleaned = text.Replace("\n", "").Replace("\r", "");
+					//if (GUILayout.Button("make move"))
+					{
+                        switch (cleaned)
+                        {
+                            case ROCK:
+                                SubmitHostMoveServerRpc(Move.ROCK);
+                                //player.TriggerServerRpc("rock");
+                                SubmitHostReadyServerRpc(State.RESULT);
+                                break;
+                            case PAPER:
+                                SubmitHostMoveServerRpc(Move.PAPER);
+                                //player.TriggerServerRpc("paper");
+                                SubmitHostReadyServerRpc(State.RESULT);
+                                break;
+                            case SCISSORS:
+                                SubmitHostMoveServerRpc(Move.SCISSORS);
+                                //player.TriggerServerRpc("scissors");
+                                SubmitHostReadyServerRpc(State.RESULT);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    /*
 					if (GUILayout.Button("Rock"))
 					{
 				        SubmitHostMoveServerRpc(Move.ROCK);
+                        player.TriggerServerRpc("rock");
 						//state = State.RESULT;
 				        SubmitHostReadyServerRpc(State.RESULT);
 					}
 					if (GUILayout.Button("Paper"))
 					{
 				        SubmitHostMoveServerRpc(Move.PAPER);
+                        player.TriggerServerRpc("paper");
 						//state = State.RESULT;
 				        SubmitHostReadyServerRpc(State.RESULT);
 					}
 					if (GUILayout.Button("Scissors"))
 					{
 				        SubmitHostMoveServerRpc(Move.SCISSORS);
+                        player.TriggerServerRpc("scissors");
 						//state = State.RESULT;
 				        SubmitHostReadyServerRpc(State.RESULT);
 					}
+                    */
                     break;
                 case State.RESULT:
                     if (ClientReady.Value == State.RESULT)
 					{
+                        var playerObject = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+                        var player = playerObject.GetComponent<RPSPlayer>();
+
+                        switch (HostMove.Value)
+                        {
+                            case Move.ROCK:
+                                player.TriggerServerRpc("rock");
+                                break;
+                            case Move.PAPER:
+                                player.TriggerServerRpc("paper");
+                                break;
+                            case Move.SCISSORS:
+                                player.TriggerServerRpc("scissors");
+                                break;
+                            default:
+                                break;
+                        }
+
                         Result result = GetResult();
-	                    GUILayout.Label("Winner: " + result);
+                        GUIStyle guiStyle = new GUIStyle();
+                        guiStyle.fontSize = 20;
+                        switch (result)
+                        {
+                            case Result.DRAW:
+        	                    GUILayout.Label("It is a draw!", guiStyle);
+                                break;
+                            case Result.HOST:
+        	                    GUILayout.Label("You win! Congratulations!", guiStyle);
+                                break;
+                            case Result.CLIENT:
+        	                    GUILayout.Label("Opponent wins!", guiStyle);
+                                break;
+                            default:
+                                break;
+                        }
 					}
 					else
 					{
@@ -212,6 +336,42 @@ namespace RPS
                     break;
                 default:
                     break;
+            }
+        }
+
+        IEnumerator GetPlayerMove()
+        {
+            UnityWebRequest www = UnityWebRequest.Get("192.168.217.190/gesture");
+            yield return www.SendWebRequest();
+    
+            if (www.result != UnityWebRequest.Result.Success) {
+                text = www.error;
+            }
+            else {
+                text = www.downloadHandler.text;
+                /*var playerObject = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+                var player = playerObject.GetComponent<RPSPlayer>();
+
+                switch (text)
+                {
+                    case ROCK:
+                        SubmitHostMoveServerRpc(Move.ROCK);
+                        player.TriggerServerRpc("rock");
+				        SubmitHostReadyServerRpc(State.RESULT);
+                        break;
+                    case PAPER:
+                        SubmitHostMoveServerRpc(Move.PAPER);
+                        player.TriggerServerRpc("paper");
+				        SubmitHostReadyServerRpc(State.RESULT);
+                        break;
+                    case SCISSORS:
+                        SubmitHostMoveServerRpc(Move.SCISSORS);
+                        player.TriggerServerRpc("scissors");
+				        SubmitHostReadyServerRpc(State.RESULT);
+                        break;
+                    default:
+                        break;
+                }*/
             }
         }
 
@@ -308,7 +468,7 @@ namespace RPS
             hostAddress = GUILayout.TextField(hostAddress);
         }
 
-        static void SubmitNewPosition()
+        void SubmitNewPosition()
         {
             if (GUILayout.Button(NetworkManager.Singleton.IsServer ? "Move" : "Request Position Change"))
             {

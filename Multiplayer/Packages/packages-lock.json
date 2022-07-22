@@ -88,6 +88,15 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.unity.netcode.gameobjects": {
+      "version": "file:/home/vfarut/Unity/com.unity.netcode.gameobjects/com.unity.netcode.gameobjects",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.unity.nuget.mono-cecil": "1.10.1",
+        "com.unity.transport": "1.1.0"
+      }
+    },
     "com.unity.nuget.mono-cecil": {
       "version": "1.10.1",
       "depth": 1,
